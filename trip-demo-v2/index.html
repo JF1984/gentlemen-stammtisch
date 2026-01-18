@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Weekend Trip Dummy</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="wrap">
+      <div class="topline">
+        <div>
+          <h1>Weekend Trip — Dummy</h1>
+          <p class="sub">Demo-Board mit Server-Votes (Netlify Functions + Blobs)</p>
+        </div>
+        <button id="copyLink" class="btn ghost" title="Link kopieren">Share</button>
+      </div>
+
+      <div class="chips">
+        <span class="chip">📍 Amsterdam (Dummy)</span>
+        <span class="chip">🗓️ Fr–So</span>
+        <span class="chip">👥 Boys</span>
+        <span class="chip" id="statusChip">🟡 Verbinde…</span>
+      </div>
+
+      <div class="controls">
+        <input id="search" class="input" placeholder="Suche: Name, Area, Typ…" />
+        <select id="typeFilter" class="input">
+          <option value="">Alle Typen</option>
+        </select>
+        <select id="dayFilter" class="input">
+          <option value="">Alle Tage</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section id="board" class="board"></section>
+
+    <footer class="footer">
+      <p>
+        <strong>Hinweis:</strong> Server-Votes sind pro Gerät/Browser eindeutig (Client-ID).
+        Ohne Login kann man “1 Vote pro Person” nicht perfekt erzwingen – aber für eine Freundesgruppe ist das super.
+      </p>
+    </footer>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

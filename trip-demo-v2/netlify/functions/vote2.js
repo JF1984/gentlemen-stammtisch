@@ -2,10 +2,18 @@
 const { getStore } = require("@netlify/blobs");
 
 const STORE_NAME = "trip-demo-votes";
-const KEY = "state-v1";
+const KEY = "state-v2"; // neuer Key -> frischer State
 
 function emptyState() {
   return { counts: {}, userVotes: {} };
+}
+
+function normalizeState(raw) {
+  let s = raw;
+  if (!s || typeof s !== "object") s = {};
+  if (!s.counts || typeof s.counts !== "object") s.counts = {};
+  if (!s.userVotes || typeof s.userVotes !== "object") s.userVotes = {};
+  return s;
 }
 
 function ensureCount(state, optionId) {
@@ -14,13 +22,12 @@ function ensureCount(state, optionId) {
 }
 
 function projectForClient(state, clientId) {
-  const my = state.userVotes[clientId] || {};
+  const myAll = state.userVotes[clientId] || {};
   const myVotes = {};
-  for (const [k, v] of Object.entries(my)) myVotes[k] = v;
+  for (const [k, v] of Object.entries(myAll)) myVotes[k] = v;
   return { counts: state.counts, myVotes };
 }
 
-// *** WICHTIG: hier wird Blobs mit siteID + token aufgebaut ***
 function getAuthedStore() {
   const siteID = process.env.NETLIFY_SITE_ID;
   const token = process.env.NETLIFY_ACCESS_TOKEN;
@@ -42,10 +49,11 @@ exports.handler = async (event) => {
   try {
     const store = getAuthedStore();
 
-    // aktuellen State laden
-    let state = await store.get(KEY, { type: "json" });
-    if (!state) state = emptyState();
+    // State laden + normalisieren
+    let raw = await store.get(KEY, { type: "json" });
+    let state = normalizeState(raw);
 
+    // ----------- GET: nur Daten lesen ----------
     if (event.httpMethod === "GET") {
       const clientId =
         (event.queryStringParameters && event.queryStringParameters.clientId) ||
@@ -57,6 +65,7 @@ exports.handler = async (event) => {
       };
     }
 
+    // ----------- POST: Vote togglen ------------
     if (event.httpMethod !== "POST") {
       return { statusCode: 405, body: "Method not allowed" };
     }
@@ -82,12 +91,12 @@ exports.handler = async (event) => {
 
     // Toggle / Switch Logik
     if (current === dir) {
-      // gleiches nochmal -> Vote entfernen
+      // Gleiches nochmal klicken -> Vote entfernen
       if (dir === "up" && count.up > 0) count.up -= 1;
       if (dir === "down" && count.down > 0) count.down -= 1;
       delete state.userVotes[clientId][optionId];
     } else {
-      // Wechsel / neuer Vote
+      // Wechsel oder neuer Vote
       if (current === "up" && count.up > 0) count.up -= 1;
       if (current === "down" && count.down > 0) count.down -= 1;
 

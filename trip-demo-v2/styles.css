@@ -125,3 +125,58 @@ select.input{min-width:180px}
 .count{color:var(--muted);font-size:12px;min-width:64px;text-align:right}
 
 .footer{color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:14px}
+
+.user-gate{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.user-gate-card{
+  width: min(420px, 92vw);
+  border-radius: 18px;
+  padding: 20px;
+  background: rgba(20,24,34,0.95);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+
+.user-gate-title{ font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+.user-gate-sub{ opacity: 0.85; margin-bottom: 14px; }
+.user-gate-select{
+  width: 100%;
+  padding: 12px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(10,12,18,0.6);
+  color: white;
+  margin-bottom: 12px;
+}
+.user-gate-btn{
+  width: 100%;
+  padding: 12px 12px;
+  border-radius: 12px;
+  border: 0;
+  font-weight: 700;
+  cursor: pointer;
+}
+.user-gate-btn:disabled{ opacity: 0.4; cursor: not-allowed; }
+
+.user-switcher{
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.user-switcher-select{
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(10,12,18,0.6);
+  color: white;
+}
+.user-switcher-label{ opacity: 0.85; }

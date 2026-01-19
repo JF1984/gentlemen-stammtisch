@@ -1,10 +1,10 @@
 const { getStore } = require("@netlify/blobs");
 
 const STORE_NAME = "trip-demo-votes";
-const KEY = "state-v3"; // neuer Key, sauberer Neustart
+const KEY = "state-v4-users"; // neuer Key
 
 function emptyState() {
-  return { counts: {}, userVotes: {} };
+  return { counts: {}, userVotes: {} }; // userVotes: { [userId]: { [optionId]: "up"|"down" } }
 }
 
 function normalizeState(s) {
@@ -19,8 +19,8 @@ function ensureCount(state, optionId) {
   return state.counts[optionId];
 }
 
-function projectForClient(state, clientId) {
-  const myAll = state.userVotes[clientId] || {};
+function projectForUser(state, userId) {
+  const myAll = state.userVotes[userId] || {};
   const myVotes = {};
   for (const [k, v] of Object.entries(myAll)) myVotes[k] = v;
   return { counts: state.counts, myVotes };
@@ -35,26 +35,21 @@ function getAuthedStore() {
     err.statusCode = 500;
     throw err;
   }
-
   return getStore({ name: STORE_NAME, siteID, token });
 }
 
 async function loadState(store) {
-  // Immer als TEXT laden, dann selbst JSON.parse
   const raw = await store.get(KEY, { type: "text" });
   if (!raw) return emptyState();
   try {
     return normalizeState(JSON.parse(raw));
   } catch {
-    // Falls je kaputt -> Reset statt crash
     return emptyState();
   }
 }
 
 async function saveState(store, state) {
-  // Immer selbst serialisieren
-  const json = JSON.stringify(state);
-  await store.set(KEY, json, { type: "text" });
+  await store.set(KEY, JSON.stringify(state), { type: "text" });
 }
 
 exports.handler = async (event) => {
@@ -63,13 +58,12 @@ exports.handler = async (event) => {
     const state = await loadState(store);
 
     if (event.httpMethod === "GET") {
-      const clientId =
-        (event.queryStringParameters && event.queryStringParameters.clientId) ||
-        "";
+      const userId =
+        (event.queryStringParameters && event.queryStringParameters.userId) || "";
       return {
         statusCode: 200,
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(projectForClient(state, clientId)),
+        body: JSON.stringify(projectForUser(state, userId)),
       };
     }
 
@@ -84,22 +78,22 @@ exports.handler = async (event) => {
       return { statusCode: 400, body: "Bad JSON" };
     }
 
-    const clientId = (body.clientId || "").trim();
+    const userId = (body.userId || "").trim();
     const optionId = (body.optionId || "").trim();
     const dir = body.dir;
 
-    if (!clientId || !optionId || (dir !== "up" && dir !== "down")) {
+    if (!userId || !optionId || (dir !== "up" && dir !== "down")) {
       return { statusCode: 400, body: "Missing/invalid fields" };
     }
 
-    if (!state.userVotes[clientId]) state.userVotes[clientId] = {};
-    const current = state.userVotes[clientId][optionId] || null;
+    if (!state.userVotes[userId]) state.userVotes[userId] = {};
+    const current = state.userVotes[userId][optionId] || null;
     const count = ensureCount(state, optionId);
 
     if (current === dir) {
       if (dir === "up" && count.up > 0) count.up -= 1;
       if (dir === "down" && count.down > 0) count.down -= 1;
-      delete state.userVotes[clientId][optionId];
+      delete state.userVotes[userId][optionId];
     } else {
       if (current === "up" && count.up > 0) count.up -= 1;
       if (current === "down" && count.down > 0) count.down -= 1;
@@ -107,7 +101,7 @@ exports.handler = async (event) => {
       if (dir === "up") count.up += 1;
       if (dir === "down") count.down += 1;
 
-      state.userVotes[clientId][optionId] = dir;
+      state.userVotes[userId][optionId] = dir;
     }
 
     await saveState(store, state);
@@ -115,7 +109,7 @@ exports.handler = async (event) => {
     return {
       statusCode: 200,
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(projectForClient(state, clientId)),
+      body: JSON.stringify(projectForUser(state, userId)),
     };
   } catch (e) {
     console.error("vote2 error:", e);

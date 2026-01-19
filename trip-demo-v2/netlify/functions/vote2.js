@@ -1,16 +1,14 @@
-// netlify/functions/vote2.js
 const { getStore } = require("@netlify/blobs");
 
 const STORE_NAME = "trip-demo-votes";
-const KEY = "state-v2"; // neuer Key -> frischer State
+const KEY = "state-v3"; // neuer Key, sauberer Neustart
 
 function emptyState() {
   return { counts: {}, userVotes: {} };
 }
 
-function normalizeState(raw) {
-  let s = raw;
-  if (!s || typeof s !== "object") s = {};
+function normalizeState(s) {
+  if (!s || typeof s !== "object") return emptyState();
   if (!s.counts || typeof s.counts !== "object") s.counts = {};
   if (!s.userVotes || typeof s.userVotes !== "object") s.userVotes = {};
   return s;
@@ -38,23 +36,32 @@ function getAuthedStore() {
     throw err;
   }
 
-  return getStore({
-    name: STORE_NAME,
-    siteID,
-    token,
-  });
+  return getStore({ name: STORE_NAME, siteID, token });
+}
+
+async function loadState(store) {
+  // Immer als TEXT laden, dann selbst JSON.parse
+  const raw = await store.get(KEY, { type: "text" });
+  if (!raw) return emptyState();
+  try {
+    return normalizeState(JSON.parse(raw));
+  } catch {
+    // Falls je kaputt -> Reset statt crash
+    return emptyState();
+  }
+}
+
+async function saveState(store, state) {
+  // Immer selbst serialisieren
+  const json = JSON.stringify(state);
+  await store.set(KEY, json, { type: "text" });
 }
 
 exports.handler = async (event) => {
   try {
     const store = getAuthedStore();
+    const state = await loadState(store);
 
-    // State laden + normalisieren
-    let raw = await store.get(KEY, { type: "json" });
-    let state = normalizeState(raw);
-    if (!raw) state = emptyState();
-
-    // ----------- GET: nur Daten lesen ----------
     if (event.httpMethod === "GET") {
       const clientId =
         (event.queryStringParameters && event.queryStringParameters.clientId) ||
@@ -66,7 +73,6 @@ exports.handler = async (event) => {
       };
     }
 
-    // ----------- POST: Vote togglen ------------
     if (event.httpMethod !== "POST") {
       return { statusCode: 405, body: "Method not allowed" };
     }
@@ -80,7 +86,7 @@ exports.handler = async (event) => {
 
     const clientId = (body.clientId || "").trim();
     const optionId = (body.optionId || "").trim();
-    const dir = body.dir; // "up" | "down"
+    const dir = body.dir;
 
     if (!clientId || !optionId || (dir !== "up" && dir !== "down")) {
       return { statusCode: 400, body: "Missing/invalid fields" };
@@ -90,14 +96,11 @@ exports.handler = async (event) => {
     const current = state.userVotes[clientId][optionId] || null;
     const count = ensureCount(state, optionId);
 
-    // Toggle / Switch Logik
     if (current === dir) {
-      // Gleiches nochmal klicken -> Vote entfernen
       if (dir === "up" && count.up > 0) count.up -= 1;
       if (dir === "down" && count.down > 0) count.down -= 1;
       delete state.userVotes[clientId][optionId];
     } else {
-      // Wechsel oder neuer Vote
       if (current === "up" && count.up > 0) count.up -= 1;
       if (current === "down" && count.down > 0) count.down -= 1;
 
@@ -107,7 +110,7 @@ exports.handler = async (event) => {
       state.userVotes[clientId][optionId] = dir;
     }
 
-    await store.set(KEY, state, { type: "json" });
+    await saveState(store, state);
 
     return {
       statusCode: 200,
@@ -117,7 +120,7 @@ exports.handler = async (event) => {
   } catch (e) {
     console.error("vote2 error:", e);
     return {
-      statusCode: e.statusCode || 500,
+      statusCode: 500,
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         error: "vote2_failed",

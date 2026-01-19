@@ -52,6 +52,7 @@ exports.handler = async (event) => {
     // State laden + normalisieren
     let raw = await store.get(KEY, { type: "json" });
     let state = normalizeState(raw);
+    if (!raw) state = emptyState();
 
     // ----------- GET: nur Daten lesen ----------
     if (event.httpMethod === "GET") {

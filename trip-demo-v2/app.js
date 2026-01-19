@@ -64,7 +64,7 @@ function getClientId(){
 const clientId = getClientId();
 
 // -------------------- Server API --------------------
-const API_BASE = "/.netlify/functions/vote";
+const API_BASE = "/.netlify/functions/vote2";
 
 async function apiGetAll(){
   const res = await fetch(`${API_BASE}?clientId=${encodeURIComponent(clientId)}`);
